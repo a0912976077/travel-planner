@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>旅遊行程規劃器</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Noto+Serif+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --card: #1c2230;
+    --border: #2a3441; --accent: #c9a84c; --accent2: #7eb8c4;
+    --text: #e8dcc8; --muted: #7a8694; --danger: #e05c5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Serif TC', serif; min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: radial-gradient(ellipse at 20% 50%, rgba(201,168,76,0.04) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(126,184,196,0.04) 0%, transparent 50%);
+  }
+  .container { position: relative; z-index: 1; max-width: 780px; margin: 0 auto; padding: 40px 20px 80px; }
+  header { text-align: center; margin-bottom: 48px; }
+  .logo-line { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 12px; }
+  .logo-line::before, .logo-line::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, transparent, var(--accent)); }
+  .logo-line::after { background: linear-gradient(to left, transparent, var(--accent)); }
+  .compass { font-size: 28px; animation: spin 20s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  h1 { font-family: 'Playfair Display', serif; font-size: clamp(26px, 6vw, 40px); font-weight: 700; background: linear-gradient(135deg, var(--accent) 0%, #e8c97a 50%, var(--accent2) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .subtitle { color: var(--muted); font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 6px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; margin-bottom: 24px; position: relative; overflow: hidden; }
+  .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
+  .section-title { font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--accent); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media (max-width: 520px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  label { font-size: 12px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  input[type="text"], input[type="number"], select, textarea {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: 'Noto Serif TC', serif; font-size: 14px;
+    padding: 10px 14px; transition: border-color 0.2s, box-shadow 0.2s; width: 100%; appearance: none;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201,168,76,0.12); }
+  textarea { resize: vertical; min-height: 70px; }
+  select option { background: var(--surface); }
+  input[type="range"] { -webkit-appearance: none; width: 100%; height: 4px; background: var(--border); border-radius: 2px; padding: 0; border: none; cursor: pointer; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px rgba(201,168,76,0.5); cursor: pointer; }
+  .slider-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .tag-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); font-size: 12px; color: var(--muted); cursor: pointer; transition: all 0.2s; user-select: none; }
+  .tag:hover { border-color: var(--accent); color: var(--accent); }
+  .tag.active { background: rgba(201,168,76,0.15); border-color: var(--accent); color: var(--accent); }
+  .btn-wrap { text-align: center; margin: 8px 0; }
+  button.cta { background: linear-gradient(135deg, #b8922a, var(--accent), #d4af50); border: none; border-radius: 40px; color: #0d1117; cursor: pointer; font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; letter-spacing: 0.08em; padding: 16px 48px; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 24px rgba(201,168,76,0.3); }
+  button.cta:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(201,168,76,0.45); }
+  button.cta:disabled { opacity: 0.5; cursor: not-allowed; }
+  .loading { display: none; text-align: center; padding: 48px 0; }
+  .loading.show { display: block; }
+  .plane { font-size: 32px; display: inline-block; animation: fly 1.5s ease-in-out infinite alternate; }
+  @keyframes fly { from { transform: translateX(-20px) rotate(-5deg); } to { transform: translateX(20px) rotate(5deg); } }
+  .loading-text { color: var(--muted); margin-top: 16px; font-size: 13px; letter-spacing: 0.15em; }
+  .result-card { display: none; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; position: relative; overflow: hidden; }
+  .result-card.show { display: block; }
+  .result-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--accent2), transparent); }
+  .result-content { color: var(--text); font-size: 14px; line-height: 1.9; }
+  .result-content h2 { font-family: 'Playfair Display', serif; color: var(--accent); font-size: 18px; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin: 20px 0 10px; }
+  .result-content h3 { color: var(--accent2); font-size: 15px; margin: 14px 0 8px; }
+  .result-content strong { color: var(--accent); }
+  .result-content hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  .result-content table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  .result-content th { background: rgba(201,168,76,0.1); color: var(--accent); padding: 8px 12px; text-align: left; border: 1px solid var(--border); }
+  .result-content td { padding: 8px 12px; border: 1px solid var(--border); vertical-align: top; }
+  .result-content ul { margin: 8px 0 8px 20px; }
+  .result-content li { margin: 4px 0; }
+  .disclaimer { margin-top: 24px; padding: 12px 16px; background: rgba(224,92,92,0.08); border: 1px solid rgba(224,92,92,0.2); border-radius: 8px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .error-msg { color: var(--danger); text-align: center; padding: 20px; font-size: 14px; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .cursor::after { content: '▌'; color: var(--accent); animation: blink 0.8s infinite; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo-line"><span class="compass">🧭</span></div>
+    <h1>旅遊行程規劃器</h1>
+    <p class="subtitle">TRAVEL ITINERARY PLANNER · Browser-Based</p>
+  </header>
+
+  <div class="card">
+    <div class="section-title">基本行程設定</div>
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="field"><label>目的地城市</label><input type="text" id="dest" placeholder="例：釜山、京都、東京"></div>
+      <div class="field"><label>住宿區域</label><input type="text" id="area" placeholder="例：廣安里、新宿"></div>
+    </div>
+    <div class="grid-3">
+      <div class="field"><label>旅行天數</label><input type="number" id="days" value="3" min="1" max="14"></div>
+      <div class="field"><label>旅行人數</label><input type="number" id="people" value="2" min="1" max="20"></div>
+      <div class="field"><label>旅行月份</label>
+        <select id="month">
+          <option value="1">1 月</option><option value="2">2 月</option><option value="3">3 月</option><option value="4">4 月</option>
+          <option value="5" selected>5 月</option><option value="6">6 月</option><option value="7">7 月</option><option value="8">8 月</option>
+          <option value="9">9 月</option><option value="10">10 月</option><option value="11">11 月</option><option value="12">12 月</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">旅遊風格偏好</div>
+    <div class="field" style="margin-bottom:20px">
+      <label>旅遊步調</label>
+      <input type="range" id="pace" min="1" max="5" value="3">
+      <div class="slider-labels"><span>🛋️ 悠閒放鬆</span><span>⚡ 行程緊湊</span></div>
+    </div>
+    <div class="field" style="margin-bottom:20px">
+      <label>旅遊興趣（可多選）</label>
+      <div class="tag-group" id="interests">
+        <span class="tag active" data-val="美食">🍜 美食</span>
+        <span class="tag active" data-val="景點">🗺️ 景點</span>
+        <span class="tag" data-val="購物">🛍️ 購物</span>
+        <span class="tag" data-val="自然">🌿 自然</span>
+        <span class="tag" data-val="文化歷史">🏯 文化歷史</span>
+        <span class="tag" data-val="咖啡廳">☕ 咖啡廳</span>
+        <span class="tag" data-val="夜生活">🌙 夜生活</span>
+        <span class="tag" data-val="水上活動">🌊 水上活動</span>
+        <span class="tag" data-val="溫泉汗蒸">♨️ 溫泉汗蒸</span>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>預算等級</label>
+        <select id="budget">
+          <option value="平價">平價（每日 TWD 1,500 以內）</option>
+          <option value="中等" selected>中等（每日 TWD 1,500–3,000）</option>
+          <option value="高端">高端（每日 TWD 3,000 以上）</option>
+        </select>
+      </div>
+      <div class="field"><label>旅遊人組成</label>
+        <select id="group">
+          <option value="獨旅">獨旅</option>
+          <option value="情侶" selected>情侶 / 雙人</option>
+          <option value="家庭">家庭（含小孩）</option>
+          <option value="朋友">朋友團</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">進階設定</div>
+    <div class="field" style="margin-bottom:16px">
+      <label>Tourist Pass / 票卡（選填）</label>
+      <input type="text" id="pass" placeholder="例：釜山 Pass 24h、大阪周遊卡">
+    </div>
+    <div class="field">
+      <label>特殊需求或必去景點（選填）</label>
+      <textarea id="special" placeholder="例：一定要去廣安里海邊、不吃辣…"></textarea>
+    </div>
+  </div>
+
+  <div class="btn-wrap">
+    <button class="cta" id="btn" onclick="generate()">✦ 產生我的專屬行程</button>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="plane">✈️</div>
+    <div class="loading-text">正在產生你的專屬行程…</div>
+  </div>
+
+  <div class="result-card" id="result">
+    <div class="section-title">✦ 你的專屬行程</div>
+    <div class="result-content" id="resultText"></div>
+    <div class="disclaimer">⚠️ 本工具使用瀏覽器本地規則式邏輯產生行程，景點開放時間與交通資訊請出發前自行確認。</div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.tag').forEach(t => t.addEventListener('click', () => t.classList.toggle('active')));
+
+  function getInterests() { return [...document.querySelectorAll('.tag.active')].map(t => t.dataset.val).join('、'); }
+  function getPace() { return {'1':'非常悠閒','2':'偏輕鬆','3':'適中','4':'偏緊湊','5':'非常緊湊'}[document.getElementById('pace').value]; }
+
+  function md(text) {
+    // tables
+    const lines = text.split('\n');
+    let out = '';
+    let inTable = false;
+    let tableHtml = '';
+    let isFirstRow = true;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.trim().startsWith('|')) {
+        if (line.includes('---')) continue;
+        if (!inTable) { inTable = true; tableHtml = '<table>'; isFirstRow = true; }
+        const cells = line.split('|').filter(c => c.trim() !== '');
+        const tag = isFirstRow ? 'th' : 'td';
+        tableHtml += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+        isFirstRow = false;
+      } else {
+        if (inTable) { out += tableHtml + '</table>'; inTable = false; tableHtml = ''; isFirstRow = true; }
+        out += line + '\n';
+      }
+    }
+    if (inTable) out += tableHtml + '</table>';
+
+    return out
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^---$/gm, '<hr>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
+      .replace(/\n/g, '<br>');
+  }
+
+  
+async function generate() {
+    const dest = document.getElementById('dest').value.trim();
+    if (!dest) { 
+      alert('請輸入目的地城市！'); 
+      return; 
+    }
+
+    const area = document.getElementById('area').value.trim() || '市中心';
+    const days = parseInt(document.getElementById('days').value);
+    const people = document.getElementById('people').value;
+    const month = document.getElementById('month').value;
+    const budget = document.getElementById('budget').value;
+    const group = document.getElementById('group').value;
+    const pass = document.getElementById('pass').value.trim();
+    const special = document.getElementById('special').value.trim();
+    const interests = [...document.querySelectorAll('.tag.active')].map(t => t.dataset.val);
+
+    const btn = document.getElementById('btn');
+    btn.disabled = true;
+
+    document.getElementById('loading').classList.add('show');
+    document.getElementById('result').classList.remove('show');
+
+    const spots = {
+      美食: ['在地市場', '人氣燒肉', '海鮮餐廳', '深夜小吃', '特色早餐'],
+      景點: ['地標景點', '觀景台', '熱門街區', '港口散步', '夜景區'],
+      購物: ['百貨商圈', '地下街', 'Outlet', '藥妝店', '選物店'],
+      自然: ['海邊', '森林步道', '公園', '山景區', '河岸散步'],
+      文化歷史: ['古蹟', '博物館', '傳統街道', '神社寺廟', '歷史村'],
+      咖啡廳: ['韓系咖啡廳', '甜點店', '景觀咖啡廳', '復古咖啡店'],
+      夜生活: ['酒吧街', '夜店區', '夜市', 'Live House'],
+      水上活動: ['SUP', '海水浴場', '遊艇體驗', '海上列車'],
+      溫泉汗蒸: ['汗蒸幕', 'SPA', '露天溫泉', '足湯']
+    };
+
+    function pick(arr, count) {
+      return arr.sort(() => 0.5 - Math.random()).slice(0, count);
+    }
+
+    function budgetText() {
+      if (budget === '平價') return '以大眾交通與平價餐廳為主';
+      if (budget === '高端') return '可安排高級餐廳與計程車 이동';
+      return '搭配熱門餐廳與舒適行程';
+    }
+
+    let result = `
+## 行前小提醒
+- ${month} 月前往 ${dest} 建議攜帶舒適鞋與輕便外套。
+- 住宿安排於 ${area}，方便每天移動。
+- ${budgetText()}。
+
+`;
+
+    for (let d = 1; d <= days; d++) {
+      let daySpots = [];
+
+      interests.forEach(i => {
+        if (spots[i]) {
+          daySpots.push(...pick(spots[i], 1));
+        }
+      });
+
+      if (daySpots.length < 5) {
+        daySpots.push('自由散步', '在地美食探索');
+      }
+
+      daySpots = daySpots.slice(0, 5);
+
+      result += `## Day ${d}｜${dest} 深度探索\n`;
+      result += `| 時間 | 地點 | 說明 |\n`;
+      result += `|------|------|------|\n`;
+
+      const times = [
+        '09:00', '11:00', '13:00', '16:00', '19:00'
+      ];
+
+      daySpots.forEach((spot, idx) => {
+        result += `| ${times[idx]} | ${spot} | 安排適合 ${group} 的活動與拍照休息時間 |\n`;
+      });
+
+      result += `\n**當日交通：** 建議使用大眾交通工具與步行移動。\n`;
+      result += `**當日預算：** ${budget}\n`;
+
+      if (special) {
+        result += `**特殊需求安排：** ${special}\n`;
+      }
+
+      result += `\n---\n\n`;
+    }
+
+    if (pass) {
+      result += `
+## Pass 卡建議
+- 建議集中在熱門景點日使用 ${pass}
+- 可搭配交通與景點聯票節省費用
+
+`;
+    }
+
+    result += `
+## 實用資訊
+- 旅遊人數：${people} 人
+- 建議下載 Google Maps / Uber / 當地交通 App
+- 行程已依照「${getPace()}」步調安排
+`;
+
+    setTimeout(() => {
+      document.getElementById('loading').classList.remove('show');
+      document.getElementById('result').classList.add('show');
+      document.getElementById('resultText').innerHTML = md(result);
+      btn.disabled = false;
+
+      document.getElementById('result').scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }, 700);
+}
+
+</script>
+</body>
+</html>
